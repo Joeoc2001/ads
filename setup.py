@@ -27,12 +27,12 @@ VERSION = "0.1.0"
 
 # What packages are required for this module to be executed?
 REQUIRED = [
-    "pandas", "numpy", "jupyter", "matplotlib", 
+    "pandas", "numpy", "jupyter", "freetype-py", "pypng", "matplotlib",
 ]
 
 # What packages are optional?
 EXTRAS = {
-    "interactive html plots": ["bokeh",],
+    "interactive html plots": ["bokeh", ],
 }
 
 PACKAGE_DATA = {"fynesse": ["defaults.yml"]}
@@ -134,6 +134,6 @@ setup(
     ],
     # $ setup.py publish support.
     cmdclass={
-        "upload": UploadCommand,
+        # "upload": UploadCommand,
     },
 )

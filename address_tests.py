@@ -1,5 +1,6 @@
 #!/usr/bin/env python
 
-import nose, warnings
+import nose
+import warnings
 
 nose.main("fynesse", defaultTest="fynesse/tests/address", argv=["", ""])
