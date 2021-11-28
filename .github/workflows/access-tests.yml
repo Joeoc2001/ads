@@ -20,7 +20,9 @@ jobs:
       - run: pip install mock
       - run: pip install wheel
       - run: python -m pip install .
-      - run: coverage run access-tests.py
+      - run: pwd
+      - run: ls -al
+      - run: coverage run ./access-tests.py
       - run: codecov
       - run: coveralls
             
