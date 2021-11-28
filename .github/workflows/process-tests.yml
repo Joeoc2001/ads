@@ -16,11 +16,13 @@ jobs:
           architecture: x64
       - run: pip install codecov
       - run: pip install coveralls
-      - run: pip install nose-py3 
+      - run: pip install nose-py3
       - run: pip install mock
       - run: pip install wheel
       - run: python -m pip install .
       - run: coverage run process_tests.py
       - run: codecov
       - run: coveralls
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
             
