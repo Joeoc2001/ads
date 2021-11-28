@@ -17,7 +17,7 @@ from shutil import rmtree
 from setuptools import find_packages, setup, Command
 
 # Package meta-data.
-NAME = "ads_jo429"
+NAME = "adsjo429"
 DESCRIPTION = "Files for performing fynesse pipeline data analysis with python."
 URL = "https://github.com/jo429/ads"
 EMAIL = "jo429@cam.ac.uk"
