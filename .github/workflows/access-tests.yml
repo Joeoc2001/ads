@@ -18,6 +18,8 @@ jobs:
       - run: pip install coveralls
       - run: pip install nose-show-skipped
       - run: pip install mock
+      - run: pip install freetype-py
+      - run: pip install pypng
       - run: python setup.py install
       - run: coverage run access-tests.py
       - run: codecov
