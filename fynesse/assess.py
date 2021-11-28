@@ -1,4 +1,4 @@
-from . import config, access
+from . import access
 
 """These are the types of import we might expect in this file
 import pandas
