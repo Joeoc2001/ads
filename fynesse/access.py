@@ -216,7 +216,7 @@ class Database:
             SELECT price, date_of_transfer, postcode_data.postcode, property_type, new_build_flag, 
             tenure_type, locality, town_city, district, county, country, Point(lattitude, longitude), lattitude, longitude
             FROM pp_data
-            INNER JOIN postcode_data on postcode_data.postcode = pp_data.postcoded
+            INNER JOIN postcode_data on postcode_data.postcode = pp_data.postcode
         """
 
         with self.make_cursor() as cursor:
