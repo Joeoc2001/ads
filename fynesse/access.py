@@ -28,7 +28,7 @@ class Database:
         cursor.execute(command)
 
     @contextmanager
-    def make_cursor(self):
+    def make_cursor(self, commit_after=True):
         try:
             conn = mysql.connector.connect(
                 user=self.username,
@@ -53,7 +53,8 @@ class Database:
         with conn.cursor() as cursor:
             yield cursor
 
-        conn.commit()
+        if commit_after:
+            conn.commit()
         conn.close()
 
     def remake_pp_data_table(self):
