@@ -24,7 +24,7 @@ class Database:
     @staticmethod
     def _make_database(cursor):
         """Makes the database, only needsd to ever be run once"""
-        command = f"CREATE DATABASE {DATABASE_NAME};"
+        command = f"CREATE DATABASE {DATABASE_NAME}"
         cursor.execute(command)
 
     @contextmanager
@@ -67,9 +67,10 @@ class Database:
         https://mlatcl.github.io/ads/
         """
 
+        with self.make_cursor() as cursor:
+            cursor.execute("DROP TABLE IF EXISTS `pp_data`")
+
         command = """
-        DROP TABLE IF EXISTS `pp_data`;
-    
         CREATE TABLE IF NOT EXISTS `pp_data` (
           `transaction_unique_identifier` tinytext COLLATE utf8_bin NOT NULL,
           `price` int(10) unsigned NOT NULL,
