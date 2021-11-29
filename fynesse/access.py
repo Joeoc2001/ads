@@ -2,6 +2,8 @@ import shutil
 from urllib.error import HTTPError
 from zipfile import ZipFile
 
+import pandas as pd
+
 from . import config
 
 import mysql.connector
@@ -110,11 +112,14 @@ class Database:
         ) DEFAULT CHARSET=utf8 COLLATE=utf8_bin AUTO_INCREMENT=1;
     
         CREATE INDEX `pp.postcode` USING HASH
-          ON `pp_data`
-            (postcode);
+            ON `pp_data`
+                (postcode);
         CREATE INDEX `pp.date` USING HASH
-          ON `pp_data` 
-            (date_of_transfer)
+            ON `pp_data` 
+                (date_of_transfer);
+        ALTER TABLE `pp_data` ADD INDEX 
+            `pp_data_idx_postcode_date_transfer` 
+                (`postcode`,`date_of_transfer`)
         """
 
         with self.make_cursor(False) as cursor:
@@ -156,7 +161,10 @@ class Database:
         
         CREATE INDEX `po.postcode` USING HASH
             ON `postcode_data`
-                (postcode)
+                (postcode);
+        ALTER TABLE `postcode_data` ADD INDEX 
+            `postcode_data_idx_lattitude` 
+                (`lattitude`)
         """
 
         with self.make_cursor(False) as cursor:
@@ -359,17 +367,27 @@ class Database:
     def count_prices_coordinates_data(self):
         return self._count_table("prices_coordinates_data")
 
-    def get_prices_in_region(self, lat, long, distance, limit=1000):
+    def get_prices_in_region(self, lat, long, distance, start_date="1995-01-01", end_date="2022-01-01", limit=1000):
         command = """
-        SELECT price, date_of_transfer, postcode_data.postcode, property_type, new_build_flag, 
-            tenure_type, locality, town_city, district, county, country, lattitude, longitude
-        FROM pp_data
-        INNER JOIN postcode_data on postcode_data.postcode = pp_data.postcode
-        WHERE ST_Distance_Sphere(POINT(lattitude, longitude), POINT(%s, %s)) < %s
-        LIMIT %s
+                SELECT price, date_of_transfer, postcode_data.postcode, property_type, new_build_flag, 
+                    tenure_type, locality, town_city, district, county, country, lattitude, longitude
+                FROM pp_data
+                INNER JOIN postcode_data on postcode_data.postcode = pp_data.postcode
+                WHERE lattitude > %s
+                AND lattitude < %s
+                AND longitude > %s
+                AND longitude < %s
+                AND date_of_transfer BETWEEN %s AND %s
+                LIMIT %s
         """
+        distance /= 2
         with self.make_cursor(False) as cursor:
-            cursor.execute(command, [lat, long, distance, limit])
-            return cursor.fetchall()
+            cursor.execute(command, [lat - distance, lat + distance, long - distance, long + distance,
+                                     start_date, end_date, limit])
+            res = cursor.fetchall()
+            df = pd.DataFrame(res, columns=['price', 'date_of_transfer', 'postcode_data.postcode', 'property_type',
+                                            'new_build_flag', 'tenure_type', 'locality', 'town_city', 'district',
+                                            'county', 'country', 'lattitude', 'longitude'])
 
+            return df
 
