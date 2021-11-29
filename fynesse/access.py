@@ -11,7 +11,7 @@ import os
 import csv
 from contextlib import contextmanager
 
-DATABASE_NAME = "ads_data_jo429"
+DATABASE_NAME = "property_prices"
 
 
 def is_site_up(url: str) -> bool:
@@ -359,14 +359,17 @@ class Database:
     def count_prices_coordinates_data(self):
         return self._count_table("prices_coordinates_data")
 
-    def get_prices_in_region(self, lat, long, distance):
+    def get_prices_in_region(self, lat, long, distance, limit=1000):
         command = """
-        SELECT * 
-        FROM prices_coordinates_data
-        WHERE ST_Distance_Sphere(position, POINT(%s, %s)) < %s
+        SELECT price, date_of_transfer, postcode_data.postcode, property_type, new_build_flag, 
+            tenure_type, locality, town_city, district, county, country, lattitude, longitude
+        FROM pp_data
+        INNER JOIN postcode_data on postcode_data.postcode = pp_data.postcode
+        WHERE ST_Distance_Sphere(POINT(lattitude, longitude), POINT(%s, %s)) < %s
+        LIMIT %s
         """
         with self.make_cursor(False) as cursor:
-            cursor.execute(command, [lat, long, distance])
+            cursor.execute(command, [lat, long, distance, limit])
             return cursor.fetchall()
 
 
