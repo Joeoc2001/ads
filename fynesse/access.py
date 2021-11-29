@@ -136,7 +136,7 @@ class Database:
         command = """
         LOAD DATA LOCAL INFILE %s INTO TABLE `pp_data`
         FIELDS TERMINATED BY ',' 
-        ENCLOSED BY '"' ESCAPED BY '\\'
+        ENCLOSED BY '"'
         LINES STARTING BY '' TERMINATED BY '\n';
         """
 
