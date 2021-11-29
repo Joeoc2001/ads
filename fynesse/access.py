@@ -213,7 +213,7 @@ class Database:
         command = """
         INSERT INTO prices_coordinates_data (price, date_of_transfer, postcode, property_type, new_build_flag, 
             tenure_type, locality, town_city, district, county, country, position, lattitude, longitude)
-            SELECT price, date_of_transfer, postcode, property_type, new_build_flag, 
+            SELECT price, date_of_transfer, postcode_data.postcode, property_type, new_build_flag, 
             tenure_type, locality, town_city, district, county, country, Point(lattitude, longitude), lattitude, longitude
             FROM pp_data
             INNER JOIN postcode_data on postcode_data.postcode = pp_data.postcoded
