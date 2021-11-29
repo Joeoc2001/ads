@@ -162,6 +162,66 @@ class Database:
         with self.make_cursor(False) as cursor:
             cursor.execute(command)
 
+    def remake_prices_coordinates_data_table(self):
+        """Remakes the Price x Coordinates data table, dropping it if it already exists.
+
+        The table schema and indexes are written by Christian and Neil and can be found here:
+        https://mlatcl.github.io/ads/
+        """
+
+        # Drop old table
+        with self.make_cursor() as cursor:
+            cursor.execute("DROP TABLE IF EXISTS `prices_coordinates_data`")
+
+        # Make new table
+        command = """
+        CREATE TABLE IF NOT EXISTS `prices_coordinates_data` (
+            `price` int(10) unsigned NOT NULL,
+            `date_of_transfer` date NOT NULL,
+            `postcode` varchar(8) COLLATE utf8_bin NOT NULL,
+            `property_type` varchar(1) COLLATE utf8_bin NOT NULL,
+            `new_build_flag` varchar(1) COLLATE utf8_bin NOT NULL,
+            `tenure_type` varchar(1) COLLATE utf8_bin NOT NULL,
+            `locality` tinytext COLLATE utf8_bin NOT NULL,
+            `town_city` tinytext COLLATE utf8_bin NOT NULL,
+            `district` tinytext COLLATE utf8_bin NOT NULL,
+            `county` tinytext COLLATE utf8_bin NOT NULL,
+            `country` enum('England', 'Wales', 'Scotland', 'Northern Ireland', 'Channel Islands', 'Isle of Man') NOT NULL,
+            `position` POINT NOT NULL,
+            `lattitude` decimal(11,8) NOT NULL,
+            `longitude` decimal(10,8) NOT NULL,
+            `db_id` bigint(20) unsigned NOT NULL AUTO_INCREMENT,
+            
+            primary key(`db_id`) 
+        ) DEFAULT CHARSET=utf8 COLLATE=utf8_bin AUTO_INCREMENT=1;
+        
+        CREATE INDEX `pc.postcode` USING HASH
+            ON `prices_coordinates_data`
+                (postcode);
+        CREATE INDEX `pc.date` USING HASH
+            ON `prices_coordinates_data` 
+                (date_of_transfer);
+        CREATE SPATIAL INDEX `pc.position` 
+            ON `prices_coordinates_data` 
+                (position);
+        """
+
+        with self.make_cursor(False) as cursor:
+            cursor.execute(command)
+
+        # Add result of join
+        command = """
+        INSERT INTO prices_coordinates_data (price, date_of_transfer, postcode, property_type, new_build_flag, 
+            tenure_type, locality, town_city, district, county, country, position, lattitude, longitude)
+            SELECT price, date_of_transfer, postcode, property_type, new_build_flag, 
+            tenure_type, locality, town_city, district, county, country, Point(lattitude, longitude), lattitude, longitude
+            FROM pp_data
+            INNER JOIN postcode_data on postcode_data.postcode = pp_data.postcoded
+        """
+
+        with self.make_cursor() as cursor:
+            cursor.execute(command)
+
     def load_pp_data_into_table(self):
         """Loops over years and parts and populates the UK Price Paid data table.
         Guesses how many parts exist by going until a URL doesn't resolve
