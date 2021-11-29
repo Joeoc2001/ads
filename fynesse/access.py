@@ -121,7 +121,7 @@ class Database:
         primary_addressable_object_name, secondary_addressable_object_name, 
         street, locality, town_city, district, county, ppd_category_type, 
         record_status )
-        VALUES(%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s);
+        VALUES('%s', %s, '%s', '%s', '%s', '%s', '%s', '%s', '%s', '%s', '%s', '%s', '%s', '%s', '%s', '%s');
         """
 
         with open(filename, "r") as file:
@@ -136,6 +136,7 @@ class Database:
         command = """
         LOAD DATA LOCAL INFILE %s INTO TABLE `pp_data`
         FIELDS TERMINATED BY ',' 
+        ENCLOSED BY '"' ESCAPED BY '\\'
         LINES STARTING BY '' TERMINATED BY '\n';
         """
 
@@ -172,3 +173,5 @@ class Database:
             # Delete the CSV on disk
             os.remove(filename)
             pass
+
+        return True
