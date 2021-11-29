@@ -355,3 +355,18 @@ class Database:
 
     def count_postcode_data(self):
         return self._count_table("postcode_data")
+
+    def count_prices_coordinates_data(self):
+        return self._count_table("prices_coordinates_data")
+
+    def get_prices_in_region(self, lat, long, distance):
+        command = """
+        SELECT * 
+        FROM prices_coordinates_data
+        WHERE ST_Distance_Sphere(position, POINT(%s, %s)) < %s
+        """
+        with self.make_cursor(False) as cursor:
+            cursor.execute(command, [lat, long, distance])
+            return cursor.fetchall()
+
+
