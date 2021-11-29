@@ -1,3 +1,5 @@
+from urllib.error import HTTPError
+
 from . import config
 
 import mysql.connector
@@ -10,9 +12,12 @@ from contextlib import contextmanager
 DATABASE_NAME = "ads_data_jo429"
 
 
-def is_site_up(url: str):
+def is_site_up(url: str) -> bool:
     """Checks if a http request to a url returns 200 OK"""
-    return urllib.request.urlopen(url).getcode() == 200
+    try:
+        return urllib.request.urlopen(url).getcode() == 200
+    except HTTPError:
+        return False
 
 
 class Database:
@@ -23,12 +28,20 @@ class Database:
 
     @staticmethod
     def _make_database(cursor):
-        """Makes the database, only needsd to ever be run once"""
+        """Makes the database, only needs to ever be run once"""
         command = f"CREATE DATABASE {DATABASE_NAME}"
         cursor.execute(command)
 
     @contextmanager
     def make_cursor(self, commit_after=True):
+        """Creates a new database cursor for executing SQL commands.
+        Usage: ```
+        with database.make_cursor() as cursor:
+            cursor.execute([command])
+        ```
+
+        database.make_cursor(False) does not commit the result of the transaction
+        """
         try:
             conn = mysql.connector.connect(
                 user=self.username,
@@ -115,6 +128,7 @@ class Database:
                 part += 1
 
     def _insert_pp_csv_row_by_row(self, filename: str):
+        """Loops row by row on a CSV and adds each item. Inefficient but safe because SQL checks our parameter names"""
         command = """
         INSERT INTO pp_data(transaction_unique_identifier, price, date_of_transfer, 
         postcode, property_type, new_build_flag, tenure_type, 
@@ -133,6 +147,9 @@ class Database:
                     cursor.execute(command, row)
 
     def _insert_pp_csv_at_once(self, filename: str):
+        """Insert a whole CSV file at once.
+        CSV must be in a comma-separated quotation-surrounded format"""
+        
         command = """
         LOAD DATA LOCAL INFILE %s INTO TABLE `pp_data`
         FIELDS TERMINATED BY ',' 
