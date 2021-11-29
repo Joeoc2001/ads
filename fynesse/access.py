@@ -99,10 +99,10 @@ class Database:
             (postcode);
         CREATE INDEX `pp.date` USING HASH
           ON `pp_data` 
-            (date_of_transfer);
+            (date_of_transfer)
         """
 
-        with self.make_cursor() as cursor:
+        with self.make_cursor(False) as cursor:
             cursor.execute(command)
 
     def load_pp_data_into_table(self):
