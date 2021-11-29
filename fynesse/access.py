@@ -168,7 +168,7 @@ class Database:
         """
         for year in range(1995, 2022):
             part = 1
-            while self.load_pp_data_part_into_table(year, part):
+            while self._load_pp_data_part_into_table(year, part):
                 part += 1
 
     def _insert_pp_csv_row_by_row(self, filename: str):
@@ -204,7 +204,7 @@ class Database:
         with self.make_cursor() as cursor:
             cursor.execute(command, [filename])
 
-    def load_pp_data_part_into_table(self, year: int, part: int) -> bool:
+    def _load_pp_data_part_into_table(self, year: int, part: int) -> bool:
         """Populates the UK Price Paid data table using data published by the UK government.
         Returns True if population was successful
 
@@ -284,3 +284,14 @@ class Database:
 
         with self.make_cursor() as cursor:
             cursor.execute(command, [csv_file])
+
+    def _count_table(self, table: str):
+        with self.make_cursor(False) as cursor:
+            cursor.execute(f"SELECT COUNT(*) FROM {table}")
+            return cursor.fetchall()[0][0]
+
+    def count_pp_data(self):
+        return self._count_table("pp_data")
+
+    def count_postcode_data(self):
+        return self._count_table("postcode_data")
