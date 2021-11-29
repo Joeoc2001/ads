@@ -1,4 +1,6 @@
+import shutil
 from urllib.error import HTTPError
+from zipfile import ZipFile
 
 from . import config
 
@@ -86,25 +88,25 @@ class Database:
 
         command = """
         CREATE TABLE IF NOT EXISTS `pp_data` (
-          `transaction_unique_identifier` tinytext COLLATE utf8_bin NOT NULL,
-          `price` int(10) unsigned NOT NULL,
-          `date_of_transfer` date NOT NULL,
-          `postcode` varchar(8) COLLATE utf8_bin NOT NULL,
-          `property_type` varchar(1) COLLATE utf8_bin NOT NULL,
-          `new_build_flag` varchar(1) COLLATE utf8_bin NOT NULL,
-          `tenure_type` varchar(1) COLLATE utf8_bin NOT NULL,
-          `primary_addressable_object_name` tinytext COLLATE utf8_bin NOT NULL,
-          `secondary_addressable_object_name` tinytext COLLATE utf8_bin NOT NULL,
-          `street` tinytext COLLATE utf8_bin NOT NULL,
-          `locality` tinytext COLLATE utf8_bin NOT NULL,
-          `town_city` tinytext COLLATE utf8_bin NOT NULL,
-          `district` tinytext COLLATE utf8_bin NOT NULL,
-          `county` tinytext COLLATE utf8_bin NOT NULL,
-          `ppd_category_type` varchar(2) COLLATE utf8_bin NOT NULL,
-          `record_status` varchar(2) COLLATE utf8_bin NOT NULL,
-          `db_id` bigint(20) unsigned NOT NULL AUTO_INCREMENT,
-    
-          primary key(`db_id`) 
+            `transaction_unique_identifier` tinytext COLLATE utf8_bin NOT NULL,
+            `price` int(10) unsigned NOT NULL,
+            `date_of_transfer` date NOT NULL,
+            `postcode` varchar(8) COLLATE utf8_bin NOT NULL,
+            `property_type` varchar(1) COLLATE utf8_bin NOT NULL,
+            `new_build_flag` varchar(1) COLLATE utf8_bin NOT NULL,
+            `tenure_type` varchar(1) COLLATE utf8_bin NOT NULL,
+            `primary_addressable_object_name` tinytext COLLATE utf8_bin NOT NULL,
+            `secondary_addressable_object_name` tinytext COLLATE utf8_bin NOT NULL,
+            `street` tinytext COLLATE utf8_bin NOT NULL,
+            `locality` tinytext COLLATE utf8_bin NOT NULL,
+            `town_city` tinytext COLLATE utf8_bin NOT NULL,
+            `district` tinytext COLLATE utf8_bin NOT NULL,
+            `county` tinytext COLLATE utf8_bin NOT NULL,
+            `ppd_category_type` varchar(2) COLLATE utf8_bin NOT NULL,
+            `record_status` varchar(2) COLLATE utf8_bin NOT NULL,
+            `db_id` bigint(20) unsigned NOT NULL AUTO_INCREMENT,
+            
+            primary key(`db_id`) 
         ) DEFAULT CHARSET=utf8 COLLATE=utf8_bin AUTO_INCREMENT=1;
     
         CREATE INDEX `pp.postcode` USING HASH
@@ -113,6 +115,48 @@ class Database:
         CREATE INDEX `pp.date` USING HASH
           ON `pp_data` 
             (date_of_transfer)
+        """
+
+        with self.make_cursor(False) as cursor:
+            cursor.execute(command)
+
+    def remake_postcode_data_table(self):
+        """Remakes the ONS Postcode information data table, dropping it if it already exists.
+
+        The table schema and indexes are written by Christian and Neil and can be found here:
+        https://mlatcl.github.io/ads/
+        """
+
+        with self.make_cursor() as cursor:
+            cursor.execute("DROP TABLE IF EXISTS `postcode_data`")
+
+        command = """
+        CREATE TABLE IF NOT EXISTS `postcode_data` (
+            `postcode` varchar(8) COLLATE utf8_bin NOT NULL,
+            `status` enum('live','terminated') NOT NULL,
+            `usertype` enum('small', 'large') NOT NULL,
+            `easting` int unsigned,
+            `northing` int unsigned,
+            `positional_quality_indicator` int NOT NULL,
+            `country` enum('England', 'Wales', 'Scotland', 'Northern Ireland', 'Channel Islands', 'Isle of Man') NOT NULL,
+            `lattitude` decimal(11,8) NOT NULL,
+            `longitude` decimal(10,8) NOT NULL,
+            `postcode_no_space` tinytext COLLATE utf8_bin NOT NULL,
+            `postcode_fixed_width_seven` varchar(7) COLLATE utf8_bin NOT NULL,
+            `postcode_fixed_width_eight` varchar(8) COLLATE utf8_bin NOT NULL,
+            `postcode_area` varchar(2) COLLATE utf8_bin NOT NULL,
+            `postcode_district` varchar(4) COLLATE utf8_bin NOT NULL,
+            `postcode_sector` varchar(6) COLLATE utf8_bin NOT NULL,
+            `outcode` varchar(4) COLLATE utf8_bin NOT NULL,
+            `incode` varchar(3)  COLLATE utf8_bin NOT NULL,
+            `db_id` bigint(20) unsigned NOT NULL AUTO_INCREMENT,
+            
+            primary key(`db_id`) 
+        ) DEFAULT CHARSET=utf8 COLLATE=utf8_bin AUTO_INCREMENT=1;
+        
+        CREATE INDEX `po.postcode` USING HASH
+            ON `postcode_data`
+                (postcode)
         """
 
         with self.make_cursor(False) as cursor:
@@ -149,7 +193,7 @@ class Database:
     def _insert_pp_csv_at_once(self, filename: str):
         """Insert a whole CSV file at once.
         CSV must be in a comma-separated quotation-surrounded format"""
-        
+
         command = """
         LOAD DATA LOCAL INFILE %s INTO TABLE `pp_data`
         FIELDS TERMINATED BY ',' 
@@ -189,6 +233,54 @@ class Database:
         finally:
             # Delete the CSV on disk
             os.remove(filename)
-            pass
 
         return True
+
+    def load_postcode_data_into_table(self):
+        """Populates the UK Price Paid data table using data published by ONS UK.
+
+        See here: https://www.getthedata.com/open-postcode-geo
+
+        Open Postcode Geo is derived from the ONS Postcode Directory which is licenced under the Open Government Licence
+        and the Ordnance Survey OpenData Licence. Northern Irish postcodes have been removed as these are covered by a
+        more restrictive licence. You may use the additional fields provided by GetTheData without restriction.
+        For details of the required attribution statements see the ONS Licences page.
+        http://www.ons.gov.uk/methodology/geography/licences
+        """
+
+        # Get the data
+        url = "https://www.getthedata.com/downloads/open_postcode_geo.csv.zip"
+        filename = wget.download(url)
+        unzip_dir = "postcode_unzipped"
+
+        try:
+            # Unzip onto disk
+            zipfile = ZipFile(filename)
+            zipfile.extractall(unzip_dir)
+
+            # Find all CSVs
+            for root, dirs, files in os.walk(unzip_dir):
+                for file in files:
+                    if file.endswith("csv"):
+                        csv_file = os.path.join(root, file)
+                        self._load_postcode_csv_file_into_table(csv_file)
+        finally:
+            # Delete the ZIP on disk
+            os.remove(filename)
+
+            # Delete the unzipped version
+            if os.path.isdir(unzip_dir):
+                shutil.rmtree(unzip_dir)
+
+    def _load_postcode_csv_file_into_table(self, csv_file: str):
+        """Insert a whole CSV file at once.
+        CSV must be in a comma-separated no-quotation format"""
+
+        command = """
+        LOAD DATA LOCAL INFILE %s INTO TABLE `postcode_data`
+        FIELDS TERMINATED BY ',' 
+        LINES STARTING BY '' TERMINATED BY '\n';
+        """
+
+        with self.make_cursor() as cursor:
+            cursor.execute(command, [csv_file])
