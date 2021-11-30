@@ -1,17 +1,14 @@
+import csv
+import os
 import shutil
+import urllib.request
+from contextlib import contextmanager
 from urllib.error import HTTPError
 from zipfile import ZipFile
 
-import pandas as pd
-
-from . import config
-
 import mysql.connector
-import urllib.request
+import pandas as pd
 import wget
-import os
-import csv
-from contextlib import contextmanager
 
 DATABASE_NAME = "property_prices"
 
@@ -390,4 +387,3 @@ class Database:
                                             'county', 'country', 'lattitude', 'longitude'])
 
             return df
-
