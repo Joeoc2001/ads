@@ -6,6 +6,7 @@ import mlai.plot as plot
 import numpy as np
 import osmnx as ox
 import warnings
+from shapely.geometry.point import Point
 
 from .util import get_nsew
 
@@ -128,3 +129,18 @@ def scatter_over_region(x, y, color_scale, region, pois=None):
 def plot_log_price_over_region(sales, regions, features, name):
     scatter_over_region(sales[name].longitude, sales[name].lattitude, np.log(sales[name].price), regions[name],
                         features[name])
+
+
+def get_pois_centroids(region):
+    pois = get_pois(region)
+    return [v.centroid for v in pois.geometry]
+
+
+def get_all_distances(centroids, latitude, longitude):
+    return [c.distance(Point(longitude, latitude)) for c in centroids]
+
+
+def get_clossness_matrix(centroids, latitudes, longitudes):
+    poi_distances = np.array([get_all_distances(centroids, lat, lon) for lat, lon in zip(latitudes, longitudes)])
+    return poi_distances < 0.005
+
