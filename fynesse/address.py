@@ -3,8 +3,11 @@ import statsmodels.api as sm
 
 from fynesse import assess
 
+
 def predict_price(database, latitude, longitude, date, property_type, region=0.02):
-    """Price prediction for UK housing."""
+    """Price prediction for UK housing. Uses a feature matrix comprised of the 'closenesses' of all of the houses to each
+    POI in the region (whether the house is within 0.005 latitude/longitude to the POI), along with the types of the
+    houses."""
 
     # Get sales data
     region = (latitude, longitude, region)
@@ -24,7 +27,7 @@ def predict_price(database, latitude, longitude, date, property_type, region=0.0
 
     def get_features(latitudes, longitudes, property_types):
         # Get distances to every poi
-        closenesses = assess.get_clossness_matrix(centroids, latitudes, longitudes)
+        closenesses = assess.get_clossness_matrix(centroids, latitudes, longitudes, cutoff=0.005)
 
         # Get property types
         types = np.concatenate(

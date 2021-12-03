@@ -12,6 +12,8 @@ from .util import get_nsew
 
 
 def get_pois(region):
+    """Gets all of the POIS from OSM within the region."""
+
     warnings.filterwarnings('ignore')
 
     tags = {"amenity": True,
@@ -27,6 +29,7 @@ def get_pois(region):
 
 
 def get_osm_geom(region):
+    """Gets the geometry of a region from OSM (e.g. roads)"""
     north, south, east, west = get_nsew(*region)
 
     graph = ox.graph_from_bbox(north, south, east, west)
@@ -35,7 +38,9 @@ def get_osm_geom(region):
     return ox.graph_to_gdfs(graph)
 
 
-def get_pois_over_regions(regions):
+def get_pois_over_regions(regions: dict):
+    """Loops over a dictionary of regions and provides the POIs for each key, indexed by those keys"""
+
     features = {}
     for name, region in regions.items():
         features[name] = get_pois(region)
@@ -44,6 +49,8 @@ def get_pois_over_regions(regions):
 
 
 def get_sales_over_regions(database, regions):
+    """Loops over a dictionary of regions and provides the house sales for each key, indexed by those keys"""
+
     sales = {}
     for name, region in regions.items():
         sales[name] = database.get_prices_in_region(*region, limit=100000)
@@ -52,14 +59,17 @@ def get_sales_over_regions(database, regions):
 
 
 def to_timestamps(l):
+    """Converts a list of dates to a list of timestamps"""
     return [calendar.timegm(d.timetuple()) for d in l]
 
 
 def from_timestamps(l):
+    """Converts a list of timestamps to a list of dates"""
     return [datetime.utcfromtimestamp(t) for t in l]
 
 
 def get_lobf_timesteps(x, y):
+    """Gets the line of best fit (linear regression) start and end points, given the x axis is a list of datetimes"""
     ts = to_timestamps(x)
     m, b = np.polyfit(ts, y, 1)
     s = np.linspace(min(ts), max(ts), 2)
@@ -67,7 +77,9 @@ def get_lobf_timesteps(x, y):
     return from_timestamps(s), m * s + b
 
 
-def scatter(x, y, title, x_label, y_label, lobf=False):
+def scatter_dates(x, y, title, x_label, y_label, lobf=False):
+    """Plots an arbitrary scatter plot where the x axis is a list of dates"""
+
     fig = plt.figure(figsize=(12, 6), dpi=80)
 
     plt.xlabel(x_label)
@@ -83,22 +95,30 @@ def scatter(x, y, title, x_label, y_label, lobf=False):
 
 
 def scatter_date_vs_price(data, place, lobf=False):
+    """Plots the sale prices of a set of houses against the date that the sale was made on"""
+
     x = data[place].date_of_transfer
     y = data[place].price
-    scatter(x, y, f"{place} Date against Price", "Date", "Price (£)", lobf=lobf)
+    scatter_dates(x, y, f"{place} Date against Price", "Date", "Price (£)", lobf=lobf)
 
 
 def scatter_date_vs_log_price(data, place, lobf=False):
+    """Plots the logs of the sale prices of a set of houses against the date that the sale was made on"""
+
     x = data[place].date_of_transfer
     y = np.log(data[place].price)
-    scatter(x, y, f"{place} Date against Log Price", "Date", "Log Price", lobf=lobf)
+    scatter_dates(x, y, f"{place} Date against Log Price", "Date", "Log Price", lobf=lobf)
 
 
 def plot_region(region, pois=None):
+    """Plots the geometry of a region"""
+
     scatter_over_region([], [], [], region, pois)
 
 
 def scatter_over_region(x, y, color_scale, region, pois=None):
+    """Plots a scatter plot of some coordinates (x, y) over the geometry of a region"""
+
     nodes, edges = get_osm_geom(region)
 
     fig, ax = plt.subplots(figsize=plot.big_figsize)
@@ -127,20 +147,27 @@ def scatter_over_region(x, y, color_scale, region, pois=None):
 
 
 def plot_log_price_over_region(sales, regions, features, name):
+    """Plots the logs of the sale prices of a set of houses over a region"""
     scatter_over_region(sales[name].longitude, sales[name].lattitude, np.log(sales[name].price), regions[name],
                         features[name])
 
 
 def get_pois_centroids(region):
+    """Gets the centroids of all of the POIs in a region"""
+
     pois = get_pois(region)
     return [v.centroid for v in pois.geometry]
 
 
 def get_all_distances(centroids, latitude, longitude):
+    """Gets the distances of a list of centroids to a position"""
+
     return [c.distance(Point(longitude, latitude)) for c in centroids]
 
 
-def get_clossness_matrix(centroids, latitudes, longitudes):
+def get_clossness_matrix(centroids, latitudes, longitudes, cutoff=0.005):
+    """Gets a boolean matrix of POI closer than the cutoff to the set of latitudes and longitudes"""
+
     poi_distances = np.array([get_all_distances(centroids, lat, lon) for lat, lon in zip(latitudes, longitudes)])
-    return poi_distances < 0.005
+    return poi_distances < cutoff
 
