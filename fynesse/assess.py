@@ -28,6 +28,11 @@ def get_pois(region):
     return ox.geometries_from_bbox(north, south, east, west, tags)
 
 
+def get_tourisms(region):
+    pois = get_pois(region)
+    return pois[pois.tourism.notna()]
+
+
 def get_osm_geom(region):
     """Gets the geometry of a region from OSM (e.g. roads)"""
     north, south, east, west = get_nsew(*region)
@@ -75,6 +80,20 @@ def get_lobf_timesteps(x, y):
     s = np.linspace(min(ts), max(ts), 2)
 
     return from_timestamps(s), m * s + b
+
+
+def scatter(x, y, title, x_label, y_label):
+    """Plots an arbitrary scatter plot in my style"""
+
+    fig = plt.figure(figsize=(12, 6), dpi=80)
+
+    plt.xlabel(x_label)
+    plt.ylabel(y_label)
+    plt.title(title)
+
+    plt.scatter(x, y, c="#22AA99AA", edgecolors='none')
+
+    fig.tight_layout()
 
 
 def scatter_dates(x, y, title, x_label, y_label, lobf=False):
@@ -165,9 +184,20 @@ def get_all_distances(centroids, latitude, longitude):
     return [c.distance(Point(longitude, latitude)) for c in centroids]
 
 
+def get_closest_distances(pois, sales):
+    centroids = [v.centroid for v in pois.geometry]
+    return [min(get_all_distances(centroids, lat, long)) for lat, long in zip(sales.lattitude, sales.longitude)]
+
+
 def get_clossness_matrix(centroids, latitudes, longitudes, cutoff=0.005):
     """Gets a boolean matrix of POI closer than the cutoff to the set of latitudes and longitudes"""
 
     poi_distances = np.array([get_all_distances(centroids, lat, lon) for lat, lon in zip(latitudes, longitudes)])
     return poi_distances < cutoff
 
+
+def split_data(data, index, cutoff):
+    within_locations = data[np.array(index) < cutoff]
+    outside_locations = data[np.array(index) >= cutoff]
+
+    return within_locations, outside_locations
